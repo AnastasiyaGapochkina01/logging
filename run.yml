@@ -1,0 +1,24 @@
+---
+- hosts: all
+  become: yes
+
+  tasks:
+    - name: Create dir
+      file:
+        path: /etc/graylog
+        state: directory
+        mode: 0755
+
+    - name: Copy files
+      copy:
+        src: ./graylog/
+        dest: /etc/graylog/
+
+    - name: Set GRAYLOG_SECRET
+      shell: sed -i 's/KEY/"{{ gl_secret }}"/g' /etc/graylog/.env
+
+    - name: Set SHA2
+      shell: sed -i 's/HASH/"{{ gl_sha2 }}"/g' /etc/graylog/.env
+
+    - name: Run compose
+      shell: "docker compose -f /etc/graylog/docker-compose.yml up -d --force-recreate"

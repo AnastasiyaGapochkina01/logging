@@ -1,0 +1,46 @@
+services:
+  mongo:
+    image: mongo:5.0.13
+    container_name: "${PROJECT_NAME}-mongo"
+    volumes:
+      - "mongodb_data:/data/db"
+
+  elasticsearch:
+    image: elasticsearch:7.17.23
+    container_name: "${PROJECT_NAME}-elastic"
+    environment:
+      - http.host=0.0.0.0
+      - transport.host:localhost
+      - network.host=0.0.0.0
+      - cluster.name=logging
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Dlog4j2.formatMsgNoLookups=true -Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  graylog:
+    image: graylog/graylog:5.0
+    container_name: "${PROJECT_NAME}-graylog"
+    depends_on:
+      mongo:
+        condition: service_started
+      elasticsearch:
+        condition: service_started
+    entrypoint: "/usr/bin/tini -- wait-for-it elasticsearch:9200 -- /docker-entrypoint.sh"
+    environment:
+      - GRAYLOG_PASSWORD_SECRET=${GL_SECRET}
+      - GRAYLOG_ROOT_PASSWORD_SHA2=${GL_SHA2}
+      - GRAYLOG_HTTP_EXTERNAL_URI=http://127.0.0.1:9000/
+    ports:
+      - 9000:9000
+      - 5140:5140
+      - 5140:5140/udp
+
+volumes:
+  mongodb_data:
